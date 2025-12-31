@@ -1,29 +1,66 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: CloudFormation Template with Mappings
+Description: Simple CloudFormation Mapping Example
 
 Mappings:
-  RegionToAMIMap:
-    us-east-1:
-      AMI: ami-068c0051b15cdb816
-    us-east-2:
-      AMI: ami-00e428798e77d38d9
-    eu-west-1:
-      AMI: ami-09c54d172e7aa3d9a
+  EnvToInstanceType:
+    dev:
+      InstanceType: t2.micro
+    test:
+      InstanceType: t2.small
+    prod:
+      InstanceType: t2.medium
 
 Parameters:
-  Region:
+  Environment:
+    Description: Deployment environment
     Type: String
-    Description: AWS region for the EC2 instance
-    Default: us-east-1
+    Default: dev
     AllowedValues:
-      - us-east-1
-      - us-east-2
-      - eu-west-1
-#Remember to select the region you are executing it 
+      - dev
+      - test
+      - prod
 
 Resources:
+
+  MyVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.1.0.0/16
+
+  MySubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MyVPC
+      CidrBlock: 10.1.1.0/24
+      AvailabilityZone: !Select [0, !GetAZs '']
+
+  MySecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow SSH
+      VpcId: !Ref MyVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+
   MyEC2Instance:
     Type: AWS::EC2::Instance
     Properties:
-      InstanceType: t2.micro
-      ImageId: !FindInMap [RegionToAMIMap, !Ref Region, AMI]
+      InstanceType: !FindInMap
+        - EnvToInstanceType
+        - !Ref Environment
+        - InstanceType
+      ImageId: ami-068c0051b15cdb816
+      SubnetId: !Ref MySubnet
+      SecurityGroupIds:
+        - !Ref MySecurityGroup
+
+Outputs:
+  SelectedInstanceType:
+    Description: Instance type selected from mapping
+    Value: !FindInMap
+      - EnvToInstanceType
+      - !Ref Environment
+      - InstanceType
