@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: S3 Static Website with index.html
+Description: S3 Static Website with index.html using Lambda Custom Resource
 
 Resources:
 
@@ -21,35 +21,77 @@ Resources:
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
-          - Sid: PublicReadGetObject
-            Effect: Allow
+          - Effect: Allow
             Principal: "*"
             Action: s3:GetObject
             Resource: !Sub "${MyS3Bucket.Arn}/*"
 
-  IndexHtmlObject:
-    Type: AWS::S3::Object
+  UploadIndexLambdaRole:
+    Type: AWS::IAM::Role
     Properties:
-      Bucket: !Ref MyS3Bucket
-      Key: index.html
-      ContentType: text/html
-      Body: |
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>CloudFormation S3 Website</title>
-        </head>
-        <body>
-          <h1> S3 Static Website is Working!</h1>
-          <p>This page was deployed using AWS CloudFormation.</p>
-        </body>
-        </html>
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: S3UploadPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource: !Sub "${MyS3Bucket.Arn}/*"
+
+  UploadIndexLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: python3.10
+      Handler: index.handler
+      Role: !GetAtt UploadIndexLambdaRole.Arn
+      Timeout: 60
+      Code:
+        ZipFile: |
+          import boto3
+          import cfnresponse
+
+          def handler(event, context):
+              s3 = boto3.client('s3')
+              bucket = event['ResourceProperties']['BucketName']
+
+              html = """<!DOCTYPE html>
+              <html>
+              <head><title>S3 Website</title></head>
+              <body>
+                <h1>🚀 S3 Static Website is Working!</h1>
+                <p>Deployed via CloudFormation + Lambda</p>
+              </body>
+              </html>
+              """
+
+              try:
+                  s3.put_object(
+                      Bucket=bucket,
+                      Key='index.html',
+                      Body=html,
+                      ContentType='text/html'
+                  )
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+              except Exception as e:
+                  cfnresponse.send(event, context, cfnresponse.FAILED, {})
+
+  UploadIndexHtml:
+    Type: Custom::UploadIndexHtml
+    Properties:
+      ServiceToken: !GetAtt UploadIndexLambda.Arn
+      BucketName: !Ref MyS3Bucket
 
 Outputs:
-  BucketName:
-    Description: Name of the S3 bucket
-    Value: !Ref MyS3Bucket
-
   WebsiteURL:
-    Description: Static website URL
+    Description: S3 Website URL
     Value: !GetAtt MyS3Bucket.WebsiteURL
