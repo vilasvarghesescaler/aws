@@ -1,0 +1,55 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: S3 Static Website with index.html
+
+Resources:
+
+  MyS3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      WebsiteConfiguration:
+        IndexDocument: index.html
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        BlockPublicPolicy: false
+        IgnorePublicAcls: false
+        RestrictPublicBuckets: false
+
+  MyBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref MyS3Bucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: PublicReadGetObject
+            Effect: Allow
+            Principal: "*"
+            Action: s3:GetObject
+            Resource: !Sub "${MyS3Bucket.Arn}/*"
+
+  IndexHtmlObject:
+    Type: AWS::S3::Object
+    Properties:
+      Bucket: !Ref MyS3Bucket
+      Key: index.html
+      ContentType: text/html
+      Body: |
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>CloudFormation S3 Website</title>
+        </head>
+        <body>
+          <h1> S3 Static Website is Working!</h1>
+          <p>This page was deployed using AWS CloudFormation.</p>
+        </body>
+        </html>
+
+Outputs:
+  BucketName:
+    Description: Name of the S3 bucket
+    Value: !Ref MyS3Bucket
+
+  WebsiteURL:
+    Description: Static website URL
+    Value: !GetAtt MyS3Bucket.WebsiteURL
