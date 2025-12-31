@@ -1,21 +1,27 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: CloudFormation Template to export vpc id
+Description: CloudFormation Template to import and print VPC ID
 
 Resources:
   InstanceSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Testing imports
-      GroupName: Testing imports
-      SecurityGroupEgress:
-        - IpProtocol: tcp
-          FromPort: 443
-          ToPort: 443
-          CidrIp: 0.0.0.0/0
+      GroupName: testing-imports-sg
+      VpcId:
+        Fn::ImportValue: MyVpcId
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 443
           ToPort: 443
           CidrIp: 0.0.0.0/0
-      VpcId:
-        Fn::ImportValue: MyVpcId
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+
+Outputs:
+  ImportedVpcId:
+    Description: VPC ID imported from another stack
+    Value:
+      Fn::ImportValue: MyVpcId
