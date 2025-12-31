@@ -63,6 +63,8 @@ Resources:
       ImageId: ami-0742b4e673072066f
       # here we reference an internal CloudFormation resource
       SubnetId: !Ref DbSubnet1
+      SecurityGroupIds:
+        - !Ref MySecurityGroup
 
   MySecurityGroup:
     Type: AWS::EC2::SecurityGroup
