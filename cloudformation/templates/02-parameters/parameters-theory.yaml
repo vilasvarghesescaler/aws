@@ -1,16 +1,19 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Create VPC (10.1.0.0/16), subnets, security group, and EC2 instance
+
 Parameters:
   SecurityGroupDescription:
-    Description: Security Group Description (Simple parameter)
+    Description: Security Group Description
     Type: String
 
   SecurityGroupPort:
-    Description: Simple Description of a Number Parameter, with MinValue and MaxValue
+    Description: Port allowed for inbound traffic
     Type: Number
     MinValue: 1150
     MaxValue: 65535
 
   InstanceType:
-    Description: WebServer EC2 instance type (has default, AllowedValues)
+    Description: EC2 instance type
     Type: String
     Default: t2.small
     AllowedValues:
@@ -18,82 +21,102 @@ Parameters:
       - t2.nano
       - t2.micro
       - t2.small
-    ConstraintDescription: must be a valid EC2 instance type.
-
-  DBPwd:
-    NoEcho: true
-    Description: The database admin account password (won't be echoed)
-    Type: String
 
   KeyName:
-    Description: Name of an existing EC2 KeyPair to enable SSH access to the instances. Linked to AWS Parameter
+    Description: Existing EC2 KeyPair
     Type: AWS::EC2::KeyPair::KeyName
-    ConstraintDescription: must be the name of an existing EC2 KeyPair.
 
   SecurityGroupIngressCIDR:
-    Description: The IP address range that can be used to communicate to the EC2 instances
+    Description: CIDR allowed to access EC2
     Type: String
-    MinLength: '9'
-    MaxLength: '18'
     Default: 0.0.0.0/0
-    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
-    ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
-
-  MyVPC:
-    Description: VPC to operate in
-    Type: AWS::EC2::VPC::Id
-
-  MySubnetIDs:
-    Description: Subnet IDs that is a List of Subnet Id
-    Type: "List<AWS::EC2::Subnet::Id>"
-
-  DbSubnetIpBlocks:
-    Description: "Comma-delimited list of three CIDR blocks"
-    Type: CommaDelimitedList
-    Default: "10.1.48.0/24, 10.1.112.0/24, 10.1.176.0/24"
-#Modify this to the Subnet range you have in your machine.    
 
 Resources:
-  MyEC2Instance:
-    Type: AWS::EC2::Instance
-    Properties:
-      #we reference the InstanceType parameter
-      InstanceType: !Ref InstanceType
-      KeyName: !Ref KeyName
-      ImageId: ami-0742b4e673072066f
-      # here we reference an internal CloudFormation resource
-      SubnetId: !Ref DbSubnet1
-      SecurityGroupIds:
-        - !Ref MySecurityGroup
 
-  MySecurityGroup:
-    Type: AWS::EC2::SecurityGroup
+  # ----------------------------
+  # VPC
+  # ----------------------------
+  MyVPC:
+    Type: AWS::EC2::VPC
     Properties:
-      GroupDescription: !Ref SecurityGroupDescription
-      SecurityGroupIngress:
-        - CidrIp: !Ref SecurityGroupIngressCIDR
-          FromPort: !Ref SecurityGroupPort
-          ToPort: !Ref SecurityGroupPort
-          IpProtocol: tcp
-      VpcId: !Ref MyVPC
+      CidrBlock: 10.1.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: MyVPC-10.1.0.0
 
+  # ----------------------------
+  # Subnets
+  # ----------------------------
   DbSubnet1:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref MyVPC
-      # the select function allows us to select across a list
-      CidrBlock: !Select [0, !Ref DbSubnetIpBlocks]
+      CidrBlock: 10.1.16.0/24
+      AvailabilityZone: !Select [0, !GetAZs '']
+      Tags:
+        - Key: Name
+          Value: DbSubnet1
 
   DbSubnet2:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref MyVPC
-      # the select function allows us to select across a list
-      CidrBlock: !Select [1, !Ref DbSubnetIpBlocks]
-      
+      CidrBlock: 10.1.32.0/24
+      AvailabilityZone: !Select [1, !GetAZs '']
+      Tags:
+        - Key: Name
+          Value: DbSubnet2
+
   DbSubnet3:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref MyVPC
-      # the select function allows us to select across a list
-      CidrBlock: !Select [2, !Ref DbSubnetIpBlocks]
+      CidrBlock: 10.1.48.0/24
+      AvailabilityZone: !Select [2, !GetAZs '']
+      Tags:
+        - Key: Name
+          Value: DbSubnet3
+
+  # ----------------------------
+  # Security Group
+  # ----------------------------
+  MySecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: !Ref SecurityGroupDescription
+      VpcId: !Ref MyVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: !Ref SecurityGroupPort
+          ToPort: !Ref SecurityGroupPort
+          CidrIp: !Ref SecurityGroupIngressCIDR
+      Tags:
+        - Key: Name
+          Value: MySecurityGroup
+
+  # ----------------------------
+  # EC2 Instance
+  # ----------------------------
+  MyEC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: !Ref InstanceType
+      KeyName: !Ref KeyName
+      ImageId: ami-00e428798e77d38d9
+      SubnetId: !Ref DbSubnet1
+      SecurityGroupIds:
+        - !Ref MySecurityGroup
+      Tags:
+        - Key: Name
+          Value: MyEC2Instance
+
+Outputs:
+  VPCId:
+    Description: VPC ID
+    Value: !Ref MyVPC
+
+  EC2InstanceId:
+    Description: EC2 Instance ID
+    Value: !Ref MyEC2Instance
