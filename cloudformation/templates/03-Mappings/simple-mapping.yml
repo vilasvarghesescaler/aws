@@ -4,11 +4,11 @@ Description: CloudFormation Template with Mappings
 Mappings:
   RegionToAMIMap:
     us-east-1:
-      AMI: ami-06ca3ca175f37dd66
+      AMI: ami-068c0051b15cdb816
     us-east-2:
-      AMI: ami-069d73f3235b535bd
+      AMI: ami-00e428798e77d38d9
     eu-west-1:
-      AMI: ami-0fd61683ae1a27a64
+      AMI: ami-09c54d172e7aa3d9a
 
 Parameters:
   Region:
