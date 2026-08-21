@@ -1375,4 +1375,6 @@ graph TD
 
 ---
 
+For more details - refer https://cortex-by-scaler.up.railway.app/dashboard
+
 *End of Tutorial — Prepared by Vilas Varghese*
